@@ -11,15 +11,8 @@ extern "C"
 #include <pthread.h>
 #include <stdbool.h>
 #include <fcntl.h>
-#include <libmemcached/memcached.h>
 }
 
-//------------------function declare------------------
-void getMemData(const char *key, char **return_value);
-int write_to_memcached(const char *key, const char *value);
-void pixel2Meter(int x_pixel, int y_pixel, float *x_meter, float *y_meter);
-
-//------------------global variable------------------
 bool isFirstInitMeasure = false;
 guide_measure_debugparam_t *mDebugParam;
 
@@ -80,91 +73,50 @@ int frameCallBack(guide_usb_frame_data_t *pVideoData)
     int width = pVideoData->frame_width;
     if (pVideoData->paramLine != NULL)
     {
-        float temp_x = 0, temp_y = 0;
-        float max = 0;
+        int x_tempture = 0, y_tempture = 0, maxi_tempture = 0;
+        int x_yuv = 0, y_yuv = 0, maxi_yuv = 0;
+        float max = 0, max_yuv = 0;
         float *temp = (float *)malloc(sizeof(float) * width * hight);
         // float temp = guide_measure_convertsinglegray2temper(pVideoData->frame_src_data[256 * 192 / 2 + 256 / 2], pVideoData->paramLine, mDebugParam, 0);
         // printf("   sdk measure temp***********************************************  %.1f\n", temp);
         int result = guide_measure_convertgray2temper(width, hight, temp, pVideoData->frame_src_data, pVideoData->paramLine, mDebugParam, 0);
-        guide_measure_convertsinglegray2temper(pVideoData->frame_src_data[256 * 192 / 2 + 256 / 2], pVideoData->paramLine, mDebugParam, 0);
-        printf("result:%d\n", result);
         for (int i = 0; i < width * hight; i++)
         {
+            // float tempture = guide_measure_convertsinglegray2temper(pVideoData->frame_src_data[i], pVideoData->paramLine, mDebugParam, 1);
             float tempture = temp[i];
             if (tempture > max)
             {
                 max = tempture;
-                temp_x = i % width;
-                temp_y = i / width;
+                x_tempture = i % width;
+                y_tempture = i / width;
+                maxi_tempture = i;
+            }
+            if(pVideoData->frame_src_data[i] > maxi_yuv)
+            {
+                max_yuv = pVideoData->frame_src_data[i];
+                x_yuv = i % width;
+                y_yuv = i / width;
+                maxi_yuv = i;
             }
         }
         if (result < 0)
         {
             printf("convertgray2temper fail\n");
         }
-        // 將原點移動到中心
-        temp_x = temp_x - width / 2;
-        temp_y = -(temp_y - hight / 2);
-        // printf("x:%f y:%f max:%f\n", temp_x, temp_y, max);
-        float x_meter, y_meter;
-        pixel2Meter(temp_x, temp_y, &x_meter, &y_meter);
-        char *send_json = (char *)malloc(sizeof(char) * 1024);
-        // sprintf(send_json, "[{\"x\":%d,\"y\":%d,\"temp\":%f}]", temp_x, temp_y, max);
-        sprintf(send_json, "[{\"x\":%f,\"y\":%f,\"temp\":%f}]", x_meter, y_meter, max);
-        write_to_memcached("thermal", send_json);
-        printf("send_json:%s\n", send_json);
+        // free(temp);
+        float temp1 = guide_measure_convertsinglegray2temper(pVideoData->frame_src_data[maxi_tempture], pVideoData->paramLine, mDebugParam, 1);
+        printf("temp maxi: %3d temp x:%3d temp y:%3d temp max:%0.3f\n",maxi_tempture, x_tempture, y_tempture, max);
+        printf("yuv  maxi: %3d yuv  x:%3d yuv  y:%3d yuv  max:%0.3f\n",maxi_yuv, x_yuv, y_yuv, max_yuv);
+        printf("yvu maxi - temp maxi: %5d\n", maxi_yuv - maxi_tempture);
+        FPS++;
+        if ((tick() - startTime) > 1)
+        {
+            startTime = tick();
+            printf("FPS-------------------------%d\n", FPS);
+            FPS = 0;
+        }
     }
     return 1;
-}
-
-
-void getMemData(const char *key, char **return_value)
-{
-    memcached_st *memc;
-    memcached_return rc;
-    memcached_server_st *servers;
-    // 创建 memcached 连接
-    memc = memcached_create(NULL);
-    servers = memcached_server_list_append(NULL, "localhost", 11211, &rc);
-    rc = memcached_server_push(memc, servers);
-    // 执行读取操作
-    size_t value_length;
-    uint32_t flags;
-    *return_value = memcached_get(memc, key, strlen(key), &value_length, &flags, &rc);
-
-    memcached_free(memc);
-    memcached_server_list_free(servers);
-}
-int write_to_memcached(const char *key, const char *value)
-{
-    memcached_st *memc;
-    memcached_return rc;
-    memcached_server_st *servers;
-    // 创建 memcached 连接
-    memc = memcached_create(NULL);
-    servers = memcached_server_list_append(NULL, "localhost", 11211, &rc);
-    rc = memcached_server_push(memc, servers);
-    // 执行写入操作
-    rc = memcached_set(memc, key, strlen(key), value, strlen(value), (time_t)0, (uint32_t)0);
-    // 清理资源
-    memcached_free(memc);
-    memcached_server_list_free(servers);
-    if (rc == MEMCACHED_SUCCESS)
-    {
-        return 1; // 写入成功
-    }
-    else
-    {
-        return 0; // 写入失败
-    }
-}
-
-void pixel2Meter(int x_pixel, int y_pixel, float *x_meter, float *y_meter)
-{
-    float width_rate = 1.2 / 256;
-    float height_rate = 0.9 / 192;
-    *x_meter = (float)x_pixel * width_rate;
-    *y_meter = (float)y_pixel * height_rate;
 }
 
 int main(void)
