@@ -171,8 +171,8 @@ int write_to_memcached(const char *key, const char *value)
 
 void pixel2Meter(int x_pixel, int y_pixel, float *x_meter, float *y_meter)
 {
-    float width_rate = 0.11 / 256;
-    float height_rate = 0.08 / 192;
+    float width_rate = 1.2 / 256;
+    float height_rate = 0.9 / 192;
     *x_meter = (float)x_pixel * width_rate;
     *y_meter = (float)y_pixel * height_rate;
 }
