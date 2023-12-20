@@ -73,19 +73,19 @@ int frameCallBack(guide_usb_frame_data_t *pVideoData)
     mDebugParam->emiss = 98;
     mDebugParam->transs = 0;
     mDebugParam->reflectTemp = 23.0f;
-    mDebugParam->distance = 30.0f;
+    mDebugParam->distance = 120.0f;
     mDebugParam->fEnvironmentIncrement = 2500;
     // 創建一個灰階圖像
-    IplImage* grayImage = cvCreateImage(cvSize(WIDTH, HEIGHT), IPL_DEPTH_8U, 1);
+    // IplImage* grayImage = cvCreateImage(cvSize(WIDTH, HEIGHT), IPL_DEPTH_8U, 1);
 
-    // 將數據填充到圖像結構中
-    memcpy(grayImage->imageData, pVideoData->frame_src_data, WIDTH*HEIGHT);
+    // // 將數據填充到圖像結構中
+    // memcpy(grayImage->imageData, pVideoData->frame_src_data, WIDTH*HEIGHT);
 
-    // 顯示圖像
-    cvShowImage("Display window", grayImage);
+    // // 顯示圖像
+    // cvShowImage("Display window", grayImage);
 
-    // 等待用戶按鍵
-    cvWaitKey(0);
+    // // 等待用戶按鍵
+    // cvWaitKey(0);
     
     if(pVideoData->paramLine != NULL)
     {
@@ -97,7 +97,7 @@ int frameCallBack(guide_usb_frame_data_t *pVideoData)
 
 int main(void)
 {
-    cvNamedWindow("Display window", CV_WINDOW_AUTOSIZE);
+    // cvNamedWindow("Display window", CV_WINDOW_AUTOSIZE);
 
     guide_usb_setloglevel(LOG_INFO);
     int ret = guide_usb_initial();

@@ -65,14 +65,6 @@ int num = 0;
 
 int frameCallBack(guide_usb_frame_data_t *pVideoData)
 {
-    FPS++;
-    if ((tick() - startTime) > 1)
-    {
-        startTime = tick();
-        printf("FPS-------------------------%d\n", FPS);
-        FPS = 0;
-    }
-
     mDebugParam->exkf = 100;
     mDebugParam->exb = 0;
     mDebugParam->emiss = 98;
@@ -84,32 +76,44 @@ int frameCallBack(guide_usb_frame_data_t *pVideoData)
     int width = pVideoData->frame_width;
     if (pVideoData->paramLine != NULL)
     {
-        int x = 0, y = 0, max = 0;
+        int x_tempture = 0, y_tempture = 0, maxi_tempture = 0;
+        int x_yuv = 0, y_yuv = 0, maxi_yuv = 0;
+        float max = 0, max_yuv = 0;
         float *temp = (float *)malloc(sizeof(float) * width * hight);
         // float temp = guide_measure_convertsinglegray2temper(pVideoData->frame_src_data[256 * 192 / 2 + 256 / 2], pVideoData->paramLine, mDebugParam, 0);
         // printf("   sdk measure temp***********************************************  %.1f\n", temp);
-        int result = guide_measure_convertgray2temper(hight, width, temp, pVideoData->frame_src_data, pVideoData->paramLine, mDebugParam, 1);
-        for (int i = 0; i < 256 * 192; i++)
+        int result = guide_measure_convertgray2temper(width, hight, temp, pVideoData->frame_src_data, pVideoData->paramLine, mDebugParam, 0);
+        for (int i = 0; i < width * hight; i++)
         {
-            if (pVideoData->frame_yuv_data[i] > max)
+            // float tempture = guide_measure_convertsinglegray2temper(pVideoData->frame_src_data[i], pVideoData->paramLine, mDebugParam, 1);
+            float tempture = temp[i];
+            if (tempture > max)
             {
-                max = pVideoData->frame_yuv_data[i];
-                x = i % width;
-                y = i / width;
+                max = tempture;
+                x_tempture = i % width;
+                y_tempture = i / width;
+                maxi_tempture = i;
+            }
+            if(pVideoData->frame_src_data[i] > maxi_yuv)
+            {
+                max_yuv = pVideoData->frame_src_data[i];
+                x_yuv = i % width;
+                y_yuv = i / width;
+                maxi_yuv = i;
             }
         }
-        if (result == 0)
+        if (result < 0)
         {
             printf("convertgray2temper fail\n");
         }
-        // if (pVideoData->frame_rgb_data != NULL)
-        // {
-        //     cv::Mat img1(hight, width, CV_8UC1, pVideoData->frame_rgb_data);
-        //     cv::imshow("Display window1", img1);
-        // }
+        if(result == 0)
+        {
+            cv::Mat img1(hight, width, CV_16UC1, temp);
+            cv::imshow("Display window1", img1);
+        }
         if (pVideoData->frame_src_data != NULL)
         {
-            cv::Mat img2(hight, width, CV_8UC1, pVideoData->frame_src_data);
+            cv::Mat img2(hight, width, CV_16UC1, pVideoData->frame_src_data);
             cv::imshow("Display window2", img2);
         }
         if (pVideoData->frame_yuv_data != NULL)
@@ -119,12 +123,20 @@ int frameCallBack(guide_usb_frame_data_t *pVideoData)
         }
         cv::waitKey(1);
         // free(temp);
-        float temp1 = guide_measure_convertsinglegray2temper(pVideoData->frame_src_data[x + y * width], pVideoData->paramLine, mDebugParam, 0);
-        printf("x:%d y:%d max:%f\n", x, y, temp1);
+        float temp1 = guide_measure_convertsinglegray2temper(pVideoData->frame_src_data[maxi_tempture], pVideoData->paramLine, mDebugParam, 1);
+        printf("temp maxi: %3d temp x:%3d temp y:%3d temp max:%0.3f\n",maxi_tempture, x_tempture, y_tempture, max);
+        printf("yuv  maxi: %3d yuv  x:%3d yuv  y:%3d yuv  max:%0.3f\n",maxi_yuv, x_yuv, y_yuv, max_yuv);
+        printf("yvu maxi - temp maxi: %5d\n", maxi_yuv - maxi_tempture);
+        FPS++;
+        if ((tick() - startTime) > 1)
+        {
+            startTime = tick();
+            printf("FPS-------------------------%d\n", FPS);
+            FPS = 0;
+        }
     }
     return 1;
 }
-
 
 int main(void)
 {
