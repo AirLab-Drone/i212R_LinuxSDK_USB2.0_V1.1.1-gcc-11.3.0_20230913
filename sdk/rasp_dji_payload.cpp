@@ -94,19 +94,25 @@ int frameCallBack(guide_usb_frame_data_t *pVideoData)
         int result = guide_measure_convertgray2temper(hight, width, temp, pVideoData->frame_src_data, pVideoData->paramLine, mDebugParam, 1);
         for (int i = 0; i < 256 * 192; i++)
         {
-            if (pVideoData->frame_yuv_data[i] > max)
+            // if (pVideoData->frame_yuv_data[i] > max)
+            // {
+            //     max = pVideoData->frame_yuv_data[i];
+            //     x = i % width;
+            //     y = i / width;
+            // }
+            if (result == 0)
             {
-                max = pVideoData->frame_yuv_data[i];
-                x = i % width;
-                y = i / width;
+                float tempture = temp[i];
+                if (tempture > max)
+                {
+                    max = tempture;
+                    x = i % width;
+                    y = i / width;
+                }
             }
         }
-        if (result == 0)
-        {
-            printf("convertgray2temper fail\n");
-        }
         // free(temp);
-        float temp1 = guide_measure_convertsinglegray2temper(pVideoData->frame_src_data[x + y * width], pVideoData->paramLine, mDebugParam, 0);
+        // float temp1 = guide_measure_convertsinglegray2temper(pVideoData->frame_src_data[x + y * width], pVideoData->paramLine, mDebugParam, 0);
         // 將原點移動到中心
         x = x - width / 2;
         y = y - hight / 2;
@@ -114,7 +120,7 @@ int frameCallBack(guide_usb_frame_data_t *pVideoData)
         // pixel2Meter(x, y, &x_meter, &y_meter);
         // printf("x:%d y:%d max:%f\n", x, y, temp1);
         char *send_json = (char *)malloc(sizeof(char) * 1024);
-        sprintf(send_json, "[{\"x\":%d,\"y\":%d,\"temp\":%f}]", x, y, temp1);
+        sprintf(send_json, "[{\"x\":%d,\"y\":%d,\"temp\":%f}]", x, y, max);
         // sprintf(send_json, "[{\"x\":%f,\"y\":%f,\"temp\":%f}]", x_meter, y_meter, temp1);
         write_to_memcached("thermal", send_json);
         printf("send_json:%s\n", send_json);
